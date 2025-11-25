@@ -51,7 +51,48 @@ void forwardSelection(const unsigned& size) {
 }
 
 void backwardElimination(const unsigned& size) {
+    cout << "Beginning search!";
 
+    string set;
+    double accuracy = (rand() % 100) / 10.0;
+    for (unsigned i = 0; i < size; i++) set += (to_string(i + 1) + ",");
+    set.pop_back();
+
+    vector<feature> features;
+    features.resize(size);
+
+    while (true) {
+        cout << "\nCurrent set: {" << set << "}\n";
+        //rando values, this time for the set without that feature
+        for (unsigned i = 0; i < size; i++) {
+            if (!features[i].chosen) features[i].value = (rand() % 1000) / 10.0;
+            else features[i].value = 0;
+        }
+
+        int maxidx = 0;
+        for (unsigned i = 0; i < features.size(); i++) {
+            if (!features[i].chosen) cout << "\n\tRemoving feature {" << i + 1 << "} accuracy would be " << features[i].value << '%';
+            if (features[i].value > features[maxidx].value) maxidx = i;
+        }
+
+        //ensure most accurate combination is an improvement
+        if (accuracy >= features[maxidx].value) {
+            cout << "\n\nAccuracy cannot increase from these options.\nSearch completed. The best identified feature subset was {";
+            for (unsigned i = 0; i < set.size(); i++) cout << set[i];
+            cout << "} with an accuracy of " << accuracy << endl;
+            return;
+        }
+
+        //update set
+        string tempSet;
+        for (unsigned i = 0; i < size; i++) if (i != maxidx && !features[i].chosen) tempSet += (to_string(i + 1) + ",");
+        set = tempSet;
+        set.pop_back();
+
+        accuracy = features[maxidx].value;
+        features[maxidx].chosen = true;
+        cout << "\nFeature set {" << set << "} has the highest accuracy (" << features[maxidx].value << "%)\n";
+    }
 }
 
 int main() {
