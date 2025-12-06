@@ -59,6 +59,34 @@ int classifier::test(const int& k, vector<dataPoint>& data) {
     else return 0;
 }
 
+vector<dataPoint> validator(const vector<int>& features, const string& filename, unsigned n) {
+
+    bool negOne = false;
+    for (auto f : features) if (f == -1) negOne = true;
+
+    vector<dataPoint> data;
+    int index = 0;
+    ifstream inData(filename);
+    if (!inData.is_open()) throw runtime_error("oops");
+    while (inData.is_open() && !inData.eof()) {
+        dataPoint newDP;
+        inData >> newDP.pClass;
+        for (unsigned i = 0; i < n; i++) {
+            double featPoint;
+            inData >> featPoint;
+
+            bool found = false;
+            for (auto f : features) if (f == i) found = true;
+            if (negOne) newDP.dpts.push_back(featPoint);
+            else if (found) newDP.dpts.push_back(featPoint);
+        }
+        newDP.baseIndex = index;
+        index++;
+        data.push_back(newDP);
+    } data.pop_back();
+    return data;
+}
+
 int main() {
     cout << "Which dataset would you like to use?\n1. Small\n2. Large\n";
     unsigned opinion, n;
@@ -85,25 +113,7 @@ int main() {
     }
     sort(features.begin(), features.end());
 
-    while (features.back() > 10 && opinion == 1) features.pop_back(); //only features 1-10 for small dataset
-
     //Populate dataset
-    vector<dataPoint> data;
-    int index = 0;
-    ifstream inData(filename);
-    if (!inData.is_open()) throw runtime_error("oops");
-    while (inData.is_open() && !inData.eof()) {
-        dataPoint newDP;
-        inData >> newDP.pClass;
-        for (unsigned i = 0; i < n; i++) {
-            double featPoint;
-            inData >> featPoint;
-            newDP.dpts.push_back(featPoint);
-        }
-        newDP.baseIndex = index;
-        index++;
-        data.push_back(newDP);
-    } data.pop_back();
-
+    vector<dataPoint> data = validator(features, filename, n);
     runTests(data);
 }
