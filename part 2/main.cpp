@@ -15,15 +15,26 @@ struct dataPoint {
 };
 
 struct classifier {
-    void train(vector<dataPoint>&, vector<int>&, int&);
+    void train(vector<dataPoint>&, const vector<int>&, int);
     int test(const int&, vector<dataPoint>&);
 };
 
-void classifier::train(vector<dataPoint>& data, vector<int>& features, int& exclude) {
+void runTests(vector<dataPoint>& data) {
+    classifier cfr;
+    double successes = 0;
+    for (unsigned i = 0; i < data.size(); i++) {
+        cfr.train(data, {0}, i);
+        successes += cfr.test(5, data);
+        sort(data.begin(), data.end(), [](const dataPoint& a, const dataPoint& b) {return a.baseIndex < b.baseIndex;}); //return to normal order
+    }
+    cout << "Result: " << successes / data.size() * 100 << "% accuracy!\n";
+}
+
+void classifier::train(vector<dataPoint>& data, const vector<int>& features, int exclude) {
     for (unsigned i = 0; i < data.size(); i++) {
         //Get the Euclidean distance for all points from the excluded (testing) point
         if (i == exclude) continue;
-
+        
         double runEuclid = 0;
         for (unsigned j = 0; j < data[i].dpts.size(); j++) runEuclid += pow(data[i].dpts[j] - data[exclude].dpts[j], 2);
         data[i].euclid = sqrt(runEuclid);
@@ -33,7 +44,19 @@ void classifier::train(vector<dataPoint>& data, vector<int>& features, int& excl
 }
 
 int classifier::test(const int& k, vector<dataPoint>& data) {
-
+    double tugOfWar = 0;
+    for (unsigned i = 1; i <= k; i++) { //Closer data points have a stronger sway
+        if (data[i].pClass == 1) tugOfWar += 1 / data[i].euclid;
+        else tugOfWar -= 1 / data[i].euclid;
+    }
+    if (tugOfWar >= 0) {
+        // cout << "1 predicted! Actual - " << data[0].pClass << endl;
+        if (data[0].pClass == 1) return 1;
+        else return 0;
+    }
+    // cout << "2 predicted! Actual - " << data[0].pClass << endl;
+    if (data[0].pClass == 2) return 1;
+    else return 0;
 }
 
 int main() {
@@ -82,5 +105,5 @@ int main() {
         data.push_back(newDP);
     } data.pop_back();
 
-    
+    runTests(data);
 }
