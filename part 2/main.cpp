@@ -24,7 +24,7 @@ void runTests(vector<dataPoint>& data) {
     double successes = 0;
     for (unsigned i = 0; i < data.size(); i++) {
         cfr.train(data, {0}, i);
-        successes += cfr.test(5, data);
+        successes += cfr.test(11, data);
         sort(data.begin(), data.end(), [](const dataPoint& a, const dataPoint& b) {return a.baseIndex < b.baseIndex;}); //return to normal order
     }
     cout << "Result: " << successes / data.size() * 100 << "% accuracy!\n";
@@ -46,15 +46,13 @@ void classifier::train(vector<dataPoint>& data, const vector<int>& features, int
 int classifier::test(const int& k, vector<dataPoint>& data) {
     double tugOfWar = 0;
     for (unsigned i = 1; i <= k; i++) { //Closer data points have a stronger sway
-        if (data[i].pClass == 1) tugOfWar += 1 / data[i].euclid;
-        else tugOfWar -= 1 / data[i].euclid;
+        if (data[i].pClass == 1) tugOfWar += data[i].euclid;
+        else tugOfWar -= data[i].euclid;
     }
     if (tugOfWar >= 0) {
-        // cout << "1 predicted! Actual - " << data[0].pClass << endl;
         if (data[0].pClass == 1) return 1;
         else return 0;
     }
-    // cout << "2 predicted! Actual - " << data[0].pClass << endl;
     if (data[0].pClass == 2) return 1;
     else return 0;
 }
