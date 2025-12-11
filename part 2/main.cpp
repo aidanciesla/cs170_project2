@@ -92,11 +92,11 @@ int main() {
 
     string filename;
     if (opinion == 1) {
-        filename = "small-test-dataset-3.txt";
+        filename = "small-4.txt";
         n = 10;
     }
     else {
-        filename = "large-test-dataset-3.txt";
+        filename = "large-4.txt";
         n = 40;
     }
 
