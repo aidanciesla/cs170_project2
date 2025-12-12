@@ -1,3 +1,16 @@
+/*
+Aidan Ciesla - acies002 - Session 1
+- Small Dataset Results:
+- Forward: Feature Subset: {3,5}, Acc: 0.86
+- Backward: Feature Subset: {3,5} Acc: 0.86
+- Large Dataset Results:
+- Forward: Feature Subset: {1,27}, Acc: 0.95
+- Backward: Feature Subset: {1,27}, Acc: 0.95
+- Titanic Dataset Results:
+- Forward: Feature Subset: {2}, Acc: 1
+- Backward: Feature Subset: {2}, Acc: 1
+*/
+
 #include <iostream>
 #include <random>
 #include <vector>
