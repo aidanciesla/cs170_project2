@@ -95,94 +95,150 @@ vector<dataPoint> validator::validate(const vector<int>& features, const string&
     return data;
 }
 
-void forwardSelection(const unsigned& rowFeatures) {
-    cout << "Beginning search!";
+void forwardSelection(const unsigned& rowFeatures, const string& filename) {
+    cout << "Beginning search! Each iteration may take up to a minute with larger datasets.\n";
     string set("");
     double accuracy = 0;
 
-    vector<feature> features;
-    features.resize(0);
-    vector<dataPoint> data;
-
+    vector<feature> features(rowFeatures);
+    validator val;
+    
     while (true) {
         if (set.size()) set = "," + set;
 
-        //rando values
+        //Test each unselected feature by adding it to current set
         for (unsigned i = 0; i < rowFeatures; i++) {
-            if (!features[i].chosen) features[i].value = (rand() % 1000) / 10.0;
+            if (!features[i].chosen) {
+                //Build feature list: current selected features + this candidate
+                vector<int> testFeatures;
+                for (unsigned j = 0; j < rowFeatures; j++) if (features[j].chosen || j == i) testFeatures.push_back(j);
+                
+                //Actually test this feature combination
+                vector<dataPoint> data = val.validate(testFeatures, filename, rowFeatures);
+                features[i].value = runTests(data);
+                cout << "\tUsing feature(s) {" << i + 1 << set << "} accuracy is " << features[i].value << "%\n";
+            }
             else features[i].value = 0;
         }
 
+        //Find best feature to add
         int maxidx = 0;
-        for (unsigned i = 0; i < features.size(); i++) {
-            if (!features[i].chosen) cout << "\n\tUsing feature(s) {" << i + 1 << set << "} accuracy is " << features[i].value << '%';
-            if (features[i].value > features[maxidx].value) maxidx = i;
-        }
+        for (unsigned i = 0; i < features.size(); i++) if (features[i].value > features[maxidx].value) maxidx = i;
 
-        //ensure most accurate combination is an improvement
+        //Check if we can still improve
         if (accuracy >= features[maxidx].value) {
-            cout << "\n\nAccuracy cannot increase from these options.\nSearch completed. The best identified feature subset was {";
+            cout << "\nAccuracy cannot increase from these options.\nSearch completed. The best identified feature subset was {";
             for (unsigned i = 1; i < set.size(); i++) cout << set[i];
-            cout << "} with an accuracy of " << accuracy << endl;
+            cout << "} with an accuracy of " << accuracy << "%\n";
             return;
         }
 
-        //update set
+        //Update set with best feature
         set = to_string(maxidx + 1) + set;
         if (set.back() == ',') set.pop_back();
 
         accuracy = features[maxidx].value;
         features[maxidx].chosen = true;
-        cout << "\nFeature set {" << set << "} has the highest accuracy (" << features[maxidx].value << "%)\n";
+        cout << "Feature set {" << set << "} has the highest accuracy (" << features[maxidx].value << "%)\n\n";
     }
 }
 
-void backwardElimination(const unsigned& size) {
-    cout << "Beginning search!";
+void backwardElimination(const unsigned& rowFeatures, const string& filename) {
+    cout << "Beginning search! Each iteration may take up to a minute with larger datasets.\n";
+    string set("");
+    double accuracy = 0;
+    vector<feature> features(rowFeatures);
+    validator val;
 
-    string set;
-    double accuracy = (rand() % 100) / 10.0;
-    for (unsigned i = 0; i < size; i++) set += (to_string(i + 1) + ",");
-    set.pop_back();
-
-    vector<feature> features;
-    features.resize(size);
-
+    int failures = 0;
+    double maxAcc;
+    string maxSet;
+    
+    //Start with all features selected
+    for (unsigned i = 0; i < rowFeatures; i++) {
+        features[i].chosen = true;
+        if (set.size()) set += ",";
+        set += to_string(i + 1);
+    }
+    
+    //Get initial accuracy with all features
+    vector<int> allFeatures;
+    for (unsigned i = 0; i < rowFeatures; i++) allFeatures.push_back(i);
+    vector<dataPoint> data = val.validate(allFeatures, filename, rowFeatures);
+    accuracy = runTests(data);
+    cout << "Using all features {" << set << "} accuracy is " << accuracy << "%\n\n";
+    
     while (true) {
-        cout << "\nCurrent set: {" << set << "}\n";
-        //rando values, this time for the set without that feature
-        for (unsigned i = 0; i < size; i++) {
-            if (!features[i].chosen) features[i].value = (rand() % 1000) / 10.0;
-            else features[i].value = 0;
+        //Test removing each currently selected feature
+        for (unsigned i = 0; i < rowFeatures; i++) {
+            if (features[i].chosen) {
+                //Build feature list: all selected features EXCEPT this one
+                vector<int> testFeatures;
+                for (unsigned j = 0; j < rowFeatures; j++) if (features[j].chosen && j != i) testFeatures.push_back(j);
+                
+                //Test this feature combination
+                if (testFeatures.empty()) features[i].value = 0; //Can't have empty feature set
+                else {
+                    vector<dataPoint> data = val.validate(testFeatures, filename, rowFeatures);
+                    features[i].value = runTests(data);
+                }
+                
+                //Build display str for this combo
+                string tempSet = "";
+                for (auto f : testFeatures) {
+                    if (tempSet.size()) tempSet += ",";
+                    tempSet += to_string(f + 1);
+                }
+                cout << "\tRemoving feature " << i + 1 << " (using {" << tempSet << "}) accuracy is " << features[i].value << "%\n";
+            }
+            else {
+                features[i].value = 0;
+            }
         }
-
+        
+        //Find best feature to REMOVE (highest accuracy when removed)
         int maxidx = 0;
-        for (unsigned i = 0; i < features.size(); i++) {
-            if (!features[i].chosen) cout << "\n\tRemoving feature {" << i + 1 << "} accuracy would be " << features[i].value << '%';
-            if (features[i].value > features[maxidx].value) maxidx = i;
+        for (unsigned i = 0; i < features.size(); i++) if (features[i].value > features[maxidx].value) maxidx = i;
+        
+        //Check if we can still improve
+        if (accuracy > features[maxidx].value) {
+            failures++;
+            cout << "\nAccuracy cannot increase from these options.\n";
+            if (failures > 1) {
+                cout << "Search completed. The best identified feature subset was {" << maxSet << "} with an accuracy of " << maxAcc << "%\n";
+                return;
+            }
+            cout << "Continuing...\n";
         }
+        
+        //Remove the feature that improved accuracy most
+        features[maxidx].chosen = false;
+        accuracy = features[maxidx].value;
+        
+        //Rebuild set string without removed feature
+        set = "";
+        for (unsigned i = 0; i < rowFeatures; i++) {
+            if (features[i].chosen) {
+                if (set.size()) set += ",";
+                set += to_string(i + 1);
+            }
+        }
+        
+        cout << "Feature set {" << set << "} has the highest accuracy (" << accuracy << "%)\n\n";
 
-        //ensure most accurate combination is an improvement
-        if (accuracy >= features[maxidx].value) {
-            cout << "\n\nAccuracy cannot increase from these options.\nSearch completed. The best identified feature subset was {";
-            for (unsigned i = 0; i < set.size(); i++) cout << set[i];
-            cout << "} with an accuracy of " << accuracy << endl;
+        if (accuracy > maxAcc) { //Update maxima in case continuing search further decreases accuracy
+            maxAcc = accuracy;
+            maxSet = set;
+        }
+        
+        //Stop if we've removed all but one feature
+        if (set.find(',') == string::npos) {
+            cout << "Only one feature remaining. Search complete!\n";
+            if (maxAcc > accuracy) cout << "The best identified feature subset was {" << maxSet << "} with an accuracy of " << maxAcc << "%\n";
             return;
         }
-
-        //update set
-        string tempSet;
-        for (unsigned i = 0; i < size; i++) if (i != maxidx && !features[i].chosen) tempSet += (to_string(i + 1) + ",");
-        set = tempSet;
-        set.pop_back();
-
-        accuracy = features[maxidx].value;
-        features[maxidx].chosen = true;
-        cout << "\nFeature set {" << set << "} has the highest accuracy (" << features[maxidx].value << "%)\n";
     }
 }
-
-
 
 int main() {
     srand(time(0));
@@ -190,22 +246,25 @@ int main() {
     cout << "Welcome to Aidan Ciesla (acies002)'s Feature Selection Algorithm!\nEnter the algorithm to be used:\n1: Forward selection\n2: Backward elimination\n";
     int features, algNum;
     cin >> algNum;
-    cout << "Enter the dataset to be used:\n1: Small\n2: Large\n";
-    unsigned opinion, n, rowFeatures;
-    cin >> opinion;
+    cout << "Enter the dataset to be used:\n1: Small\n2: Large\n3. Titanic\n";
+    unsigned dataset, n, rowFeatures;
+    cin >> dataset;
 
     string filename;
-    if (opinion == 1) {
-        filename = "small-4.txt";
-        rowFeatures = 10;
-        n = 100;
-    }
-    else {
-        filename = "large-4.txt";
-        rowFeatures = 40;
-        n = 1000;
+    switch (dataset) {
+        case 1:
+            filename = "small-4.txt.";
+            rowFeatures = 10; break;
+        case 2:
+            filename = "large-4.txt";
+            rowFeatures = 40; break;
+        case 3:
+            filename = "titanic.txt";
+            rowFeatures = 6; break;
     }
 
-    if (algNum == 1) forwardSelection(features);
-    else if (algNum == 2) backwardElimination(features);
+    if (algNum == 1) forwardSelection(rowFeatures, filename);
+    else if (algNum == 2) backwardElimination(rowFeatures, filename);
+
+    if (dataset == 3) cout << "Titanic features:\n1: Sex\n2: Ticket class\n3: Age\n4. Number of spouses and siblings aboard\n5. Number of parents and children aboard\n6. Ticket fare\n";
 }
