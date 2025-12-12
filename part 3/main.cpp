@@ -25,6 +25,10 @@ struct classifier {
     int test(const int&, vector<dataPoint>&);
 };
 
+struct validator {
+    vector<dataPoint> validate(const vector<int>&, const string&, unsigned);
+};
+
 double runTests(vector<dataPoint>& data) {
     classifier cfr;
     double successes = 0;
@@ -63,7 +67,7 @@ int classifier::test(const int& k, vector<dataPoint>& data) {
     else return 0;
 }
 
-vector<dataPoint> validator(const vector<int>& features, const string& filename, unsigned n) {
+vector<dataPoint> validator::validate(const vector<int>& features, const string& filename, unsigned n) {
 
     bool negOne = false;
     for (auto f : features) if (f == -1) negOne = true;
@@ -91,18 +95,20 @@ vector<dataPoint> validator(const vector<int>& features, const string& filename,
     return data;
 }
 
-void forwardSelection(const unsigned& size) {
+void forwardSelection(const unsigned& rowFeatures) {
     cout << "Beginning search!";
     string set("");
     double accuracy = 0;
 
     vector<feature> features;
-    features.resize(size);
+    features.resize(0);
+    vector<dataPoint> data;
+
     while (true) {
         if (set.size()) set = "," + set;
 
         //rando values
-        for (unsigned i = 0; i < size; i++) {
+        for (unsigned i = 0; i < rowFeatures; i++) {
             if (!features[i].chosen) features[i].value = (rand() % 1000) / 10.0;
             else features[i].value = 0;
         }
@@ -181,13 +187,24 @@ void backwardElimination(const unsigned& size) {
 int main() {
     srand(time(0));
     // srand(0);
-    cout << "Welcome to Aidan Ciesla (acies002)'s Feature Selection Algorithm!\nPlease enter total number of features: ";
-    int features, algNum, dataNum;
-    cin >> features;
-    cout << "Enter the algorithm to be used:\n1: Forward selection\n2: Backward elimination\n";
+    cout << "Welcome to Aidan Ciesla (acies002)'s Feature Selection Algorithm!\nEnter the algorithm to be used:\n1: Forward selection\n2: Backward elimination\n";
+    int features, algNum;
     cin >> algNum;
     cout << "Enter the dataset to be used:\n1: Small\n2: Large\n";
-    cin >> dataNum;
+    unsigned opinion, n, rowFeatures;
+    cin >> opinion;
+
+    string filename;
+    if (opinion == 1) {
+        filename = "small-4.txt";
+        rowFeatures = 10;
+        n = 100;
+    }
+    else {
+        filename = "large-4.txt";
+        rowFeatures = 40;
+        n = 1000;
+    }
 
     if (algNum == 1) forwardSelection(features);
     else if (algNum == 2) backwardElimination(features);
